@@ -1,19 +1,22 @@
-Backend installation
+## Backend online installation
 
-
-
-<!-- pip install flask flask-sqlalchemy flask-login --> Still in progress making 
 
 pip install flask-cors Flask Flask-JWT Flask Flask-JWT-Extended flask flask-sqlalchemy Flask Flask-Bcrypt flask_cors
 
-pip install alembic
 
-alembic init alembic
+## Backeng alembic and migration instructions
+ - If you have deleted the alembic folder, then follow the following steps:
 
-alembic revision --autogenerate -m "description_of_migration"
+     pip install alembic
 
-alembic upgrade head
+     alembic init alembic
+
+     alembic revision --autogenerate -m "description_of_migration"
+
+     alembic upgrade head 
 
 
-
+ - if you haven't deleted the folder:
+    alembic revision --autogenerate -m "description_of_migration"
+    alembic upgrade head
 

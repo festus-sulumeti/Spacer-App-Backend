@@ -7,6 +7,7 @@ from datetime import timedelta
 from models import db, User, Space, Booking
 from config import DATABASE_CONFIG  # Import the config
 import secrets
+from payment import trigger_stk_push, query_stk_push
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -134,61 +135,43 @@ def user_logout():
         return response, 200
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}),
-    
-# Add Booking Route
-# @app.route('/bookings', methods=['POST'])
-# def add_booking():
-#     data = request.get_json()
-#     new_booking = Booking(user_id=data['user_id'], space_id=data['space_id'], start_time=data['start_time'], end_time=data['end_time'], status=data.get('status', 'pending'), payment_status=data.get('payment_status', 'unpaid'))
-#     db.session.add(new_booking)
-#     db.session.commit()
-#     return jsonify({"success": True, "message": "Booking added successfully"}), 201
 
-# # View All Bookings Route
-# @app.route('/bookings', methods=['GET'])
-# def get_bookings():
-    bookings = Booking.query.all()
-    booking_list = []
-    for booking in bookings:
-        booking_data = {
-            'id': booking.id,
-            'user_id': booking.user_id,
-            'space_id': booking.space_id,
-            'start_time': str(booking.start_time),  # Convert to string for JSON compatibility
-            'end_time': str(booking.end_time),  # Convert to string for JSON compatibility
-            'status': booking.status,
-            'payment_status': booking.payment_status,
-            'created_at': str(booking.created_at)  # Convert to string for JSON compatibility
-        }
-        booking_list.append(booking_data)
-    return jsonify({"success": True, "bookings": booking_list}), 200
-
-# Add Booking Route
-@app.route('/bookings', methods=['POST'])
+# # Update the delete_user route to handle user deletion
+# @app.route('/delete_user', methods=['DELETE'])
 # @jwt_required()  # Protect this route with JWT authentication
+# def delete_user():
+    try:
+        user_email = get_jwt_identity()
+        user = User.query.filter_by(email=user_email).first()
+
+        if user:
+            db.session.delete(user)
+            db.session.commit()
+            return jsonify({"success": True, "message": "User deleted successfully"}), 200
+        else:
+            return jsonify({"success": False, "message": "User not found"}), 404
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@app.route('/bookings', methods=['POST'])
 def add_booking():
     data = request.get_json()
     
-    # user_id = get_jwt_identity()
-
-    # Check if all required fields are present in the request
     required_fields = ['user_id', 'space_id', 'start_time', 'end_time']
     if not all(field in data for field in required_fields):
         return jsonify({"success": False, "message": "Missing required fields"}), 400
 
-    # Validate start_time and end_time format
     try:
-        start_time = datetime.strptime(data['start_time'], '%Y-%m-%dT%H:%M:%S')
-        end_time = datetime.strptime(data['end_time'], '%Y-%m-%dT%H:%M:%S')
+        start_time = datetime.strptime(data['start_time'], '%Y-%m-%dT%H:%M')
+        end_time = datetime.strptime(data['end_time'], '%Y-%m-%dT%H:%M')
     except ValueError:
-        return jsonify({"success": False, "message": "Invalid date/time format. Use ISO 8601 format: YYYY-MM-DDTHH:MM:SS"}), 400
+        return jsonify({"success": False, "message": "Invalid date/time format. Use ISO 8601 format: YYYY-MM-DDTHH:MM"}), 400
 
-    # Check if the space exists
     space = Space.query.get(data['space_id'])
     if not space:
         return jsonify({"success": False, "message": "Space not found"}), 404
 
-    # Create and add the new booking
     new_booking = Booking(
         user_id=data['user_id'],
         space_id=data['space_id'],
@@ -202,7 +185,6 @@ def add_booking():
 
     return jsonify({"success": True, "message": "Booking added successfully"}), 201
 
-# Modify the get_bookings route to format the date/time strings
 @app.route('/bookings', methods=['GET'])
 def get_bookings():
     bookings = Booking.query.all()
@@ -212,14 +194,40 @@ def get_bookings():
             'id': booking.id,
             'user_id': booking.user_id,
             'space_id': booking.space_id,
-            'start_time': booking.start_time.strftime('%Y-%m-%dT%H:%M:%S'),  # Format start_time
-            'end_time': booking.end_time.strftime('%Y-%m-%dT%H:%M:%S'),  # Format end_time
+            'start_time': booking.start_time.strftime('%Y-%m-%dT%H:%M'),
+            'end_time': booking.end_time.strftime('%Y-%m-%dT%H:%M'),
             'status': booking.status,
             'payment_status': booking.payment_status,
-            'created_at': booking.created_at.strftime('%Y-%m-%dT%H:%M:%S')  # Format created_at
+            'created_at': booking.created_at.strftime('%Y-%m-%dT%H:%M')
         }
         booking_list.append(booking_data)
     return jsonify({"success": True, "bookings": booking_list}), 200
+
+@app.route('/make_payment', methods=['POST'])
+@jwt_required()
+def make_payment():
+    data = request.get_json()
+    # Extract payment details from request
+    phone_number = data['phone_number']
+    amount = data['amount']
+    callback_url = data['callback_url']
+    account_ref = data['account_ref']
+    description = data['description']
+
+    # Trigger STK push payment
+    payment_response = trigger_stk_push(phone_number, amount, callback_url, account_ref, description)
+    return jsonify(payment_response), 200
+
+@app.route('/check_payment_status', methods=['POST'])
+@jwt_required()
+def check_payment_status():
+    data = request.get_json()
+    checkout_request_id = data['checkout_request_id']
+
+    # Query STK push payment status
+    payment_status_response = query_stk_push(checkout_request_id)
+    return jsonify(payment_status_response), 200
+
 
 
 if __name__ == '__main__':

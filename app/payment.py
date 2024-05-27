@@ -1,139 +1,22 @@
-import datetime
+# config.py
 
-import requests
-import base64
+import os
 
-CONSUMER_KEY: str = ""
-CONSUMER_SECRET: str = ""
-PASSKEY: str = ""
-SHORT_CODE: str = ""
-ACCOUNT_TYPE: str = ""
+# Flask configuration
+DEBUG = True
+SECRET_KEY = 'django-insecure-8=*3u5+vebaka^-xw9il6d=$!_p73s%1xk4n+gyb*b$)w#qv*+'
 
+# M-Pesa Daraja configuration
+MPESA_ENVIRONMENT = 'sandbox'
 
-def _get_trans_type():
-    if ACCOUNT_TYPE == "PAYBILL":
-        trans_type = "CustomerPayBillOnline"
-    else:
-        trans_type = "CustomerBuyGoodsOnline"
-    return trans_type
+MPESA_CONSUMER_KEY = 'f8kjmetexadYVf7jBPZMB56ntRnAQQ6mDZ2fbgWuvYtYNl42'
+MPESA_CONSUMER_SECRET = 'cNgkzRADS1lVFwH30CvUuP0adZXpKOX7kuAtyb00K3KRWAG1nyG2UXdXEteZMG7I'
 
+MPESA_SHORTCODE = '174379'
+MPESA_EXPRESS_SHORTCODE = '174379'
+MPESA_SHORTCODE_TYPE = 'paybill'
+MPESA_PASSKEY = 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919'
+MPESA_INITIATOR_USERNAME = 'testapi'
+MPESA_INITIATOR_SECURITY_CREDENTIAL = 'Safaricom999!*!'
 
-def _get_password():
-    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-    data_to_encode = SHORT_CODE + PASSKEY + timestamp
-
-    online_password = base64.b64encode(data_to_encode.encode('ascii'))
-    decode_password = online_password.decode('utf-8')
-    return decode_password
-
-
-def _get_access_token() -> str:
-    url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
-
-    encoded_creds = f"{CONSUMER_KEY}:{CONSUMER_SECRET}".encode('ascii')
-    b64_creds = base64.b64encode(encoded_creds)
-
-    payload = {}
-    headers = {
-        'Authorization': f"Basic {b64_creds.decode('utf-8')}"
-    }
-
-    response = requests.request("GET", url, headers=headers, data=payload)
-    return dict(response.json())["access_token"]
-
-
-def trigger_stk_push(phone_number: int, amount: int, callback_url: str, account_ref: str, description: str) -> dict:
-    """
-
-    :param phone_number: Customer Phone Number
-    :param amount: Amount to be paid
-    :param callback_url: Your callback URL configured in the dashboard
-    :param account_ref: Account Reference (e.g. Company Name/Business Name)
-    :param description: Transaction Description
-    :return: Python Dictionary with transaction info
-    """
-
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {_get_access_token()}'
-    }
-
-    payload = {
-        "BusinessShortCode": int(SHORT_CODE),
-        "Password": _get_password(),
-        "Timestamp": int(datetime.datetime.now().strftime('%Y%m%d%H%M%S')),
-        "TransactionType": _get_trans_type(),
-        "Amount": amount,
-        "PartyA": phone_number,
-        "PartyB": int(SHORT_CODE),
-        "PhoneNumber": phone_number,
-        "CallBackURL": callback_url,
-        "AccountReference": account_ref,
-        "TransactionDesc": description
-    }
-
-    response = requests.request("POST", 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
-                                headers=headers, json=payload)
-    return dict(response.json())
-
-
-def query_stk_push(checkout_request_id: str) -> dict:
-    """
-
-    :param checkout_request_id: Acquired from the result of successful STK push payment
-    :return: Python Dictionary with transaction info
-    """
-
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {_get_access_token()}'
-    }
-    payload = {
-        "BusinessShortCode": int(SHORT_CODE),
-        "Password": _get_password(),
-        "Timestamp": int(datetime.datetime.now().strftime('%Y%m%d%H%M%S')),
-        "CheckoutRequestID": checkout_request_id,
-    }
-    response = requests.request("POST", 'https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query', headers=headers,
-                                data=payload)
-    return dict(response.json())
-
-
-# TODO: To be revisited
-def register_urls(confirmation_url: str, validation_url: str, response_type: str):
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {_get_access_token()}'
-    }
-
-    payload = {
-        "ShortCode": SHORT_CODE,
-        "ResponseType": response_type,
-        "ConfirmationURL": confirmation_url,
-        "ValidationURL": validation_url,
-    }
-
-    response = requests.request("POST", 'https://sandbox.safaricom.co.ke/mpesa/c2b/v1/registerurl', headers=headers,
-                                data=payload)
-    return dict(response.json())
-
-
-# TODO: To be revisited
-def c2b_transaction(amount: int, customer_phone_number: str):
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {_get_access_token()}'
-    }
-    payload = {
-        "ShortCode": int(SHORT_CODE),
-        "CommandID": _get_trans_type(),
-        "amount": amount,
-        "MSISDN": customer_phone_number,
-        "BillRefNumber": "examplepayment",
-    }
-    if _get_trans_type() == 'CustomerBuyGoodsOnline':
-        payload["BillRefNumber"] = ""
-
-    response = requests.request("POST", 'https://sandbox.safaricom.co.ke/mpesa/c2b/v1/simulate', headers=headers,
-                                data=payload)
-    return dict(response.json())
+# Other Flask configurations...

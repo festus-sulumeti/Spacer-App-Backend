@@ -12,7 +12,7 @@ import os
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') 
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URI') 
 # Generate a random secret key
 jwt_secret_key = secrets.token_hex(32)  # Generate a 32-byte (256-bit) random key
 

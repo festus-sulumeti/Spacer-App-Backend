@@ -5,14 +5,14 @@ from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, unset_jwt_cookies
 from datetime import timedelta
 from models import db, User, Space, Booking
-#from config import DATABASE_CONFIG  # Import the config
+from config import DATABASE_CONFIG  # Import the config
 import secrets
 from payment import trigger_stk_push, query_stk_push
 import os
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URI') 
+app.config['SQLALCHEMY_DATABASE_URI'] = f"postgresql://{DATABASE_CONFIG['user']}:{DATABASE_CONFIG['pw']}@{DATABASE_CONFIG['host']}:{DATABASE_CONFIG['port']}/{DATABASE_CONFIG['db']}" 
 # Generate a random secret key
 jwt_secret_key = secrets.token_hex(32)  # Generate a 32-byte (256-bit) random key
 
